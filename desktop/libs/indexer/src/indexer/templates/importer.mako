@@ -1645,7 +1645,7 @@ ${ assist.assistPanel() }
       });
       self.hasStreamSelected.subscribe(function(newValue) {
         if (newValue) {
-          wizard.guessFormat(); 
+          wizard.guessFormat();
           if (newValue == 'kafka') {
             wizard.destination.tableFormat('kudu');
           }
@@ -2140,7 +2140,7 @@ ${ assist.assistPanel() }
                 self.source.streamObjects(resp['objects']);
               }
             }
-    
+
             if (self.source.inputFormat() != 'stream' || self.source.streamSelection() != 'sfdc') {
               self.guessFieldTypes();
             }
