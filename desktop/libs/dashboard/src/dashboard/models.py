@@ -144,6 +144,8 @@ class Collection2(object):
         properties['domain'] = {'blockParent': [], 'blockChildren': []}
       if 'missing' not in properties:
         properties['missing'] = False
+      if 'slot' not in properties:
+        properties['slot'] = 0
 
       if properties.get('facets'):
         for facet_facet in properties['facets']:
@@ -370,14 +372,21 @@ def range_pair(field, cat, fq_filter, iterable, end, collection_facet):
   next(to, None)
   counts = iterable[1::2]
   total_counts = counts.pop(0) if collection_facet['properties']['sort'] == 'asc' else 0
+  isDate = collection_facet['properties']['isDate']
 
   for element in a:
     next(to, None)
     to_value = next(to, end)
     count = next(a)
 
+    if collection_facet['properties']['sort'] == 'asc':
+      from_value = to_value
+      to_value = element
+    else:
+      from_value = element
+
     pairs.append({
-        'field': field, 'from': element, 'value': count, 'to': to_value, 'selected': element in selected_values,
+        'field': field, 'from': from_value if isDate else int(element), 'value': count, 'to': to_value if isDate else int(to_value), 'selected': element in selected_values,
         'exclude': all([f['exclude'] for f in fq_filter if f['value'] == element]),
         'is_single_unit_gap': is_single_unit_gap,
         'total_counts': total_counts,

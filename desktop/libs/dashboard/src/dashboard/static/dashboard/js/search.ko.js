@@ -1137,6 +1137,7 @@ var Collection = function (vm, collection) {
         "id": facet_json.widget_id,
         "label": facet_json.name,
         "field": facet_json.name,
+        'window_size': $(window).width() - 600, // TODO: Find a better way to get facet width.
         "widget_type": facet_json.widgetType
       }, function (data) {
         if (data.status == 0) {
@@ -2555,6 +2556,7 @@ var SearchViewModel = function (collection_json, query_json, initial_json, has_g
         facet.hideStacked = ko.computed(function () {
           return !facet.extraSeries() || !facet.extraSeries().length;
         });
+        facet.selectedSerie = ko.observable({});
         facet.resultHash(_hash);
         facet.filterHash(_filterHash);
         facet.has_data(true);

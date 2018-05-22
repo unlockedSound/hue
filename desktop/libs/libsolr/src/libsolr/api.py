@@ -124,7 +124,7 @@ class SolrApi(object):
               'mincount': int(facet['properties']['mincount'])
           }
 
-          if timeFilter and timeFilter['time_field'] == facet['field'] and (facet['id'] not in timeFilter['time_filter_overrides'] or facet['widgetType'] != 'histogram-widget'):
+          if facet['properties']['isDate'] or timeFilter and timeFilter['time_field'] == facet['field'] and (facet['id'] not in timeFilter['time_filter_overrides'] or facet['widgetType'] != 'histogram-widget'):
             keys.update(self._get_time_filter_query(timeFilter, facet))
 
           params += (
@@ -937,10 +937,21 @@ class SolrApi(object):
     return props
 
   def _get_time_filter_query(self, timeFilter, facet):
-    if 'fixed' in timeFilter:
+    properties = facet.get('properties', facet)
+    if not timeFilter:
+      props = {}
+      stat_facet = {'min': properties['start'], 'max': properties['end']}
+      _compute_range_facet(facet['widgetType'], stat_facet, props, stat_facet['min'], stat_facet['max'],
+                           SLOTS=properties['slot'])
+      gap = props['gap']
+      unit = re.split('\d+', gap)[1]
+      return {
+        'gap': '%(gap)s' % props,  # add a 'auto'
+      }
+    elif 'fixed' in timeFilter or properties['slot'] != 0:
       props = {}
       stat_facet = {'min': timeFilter['from'], 'max': timeFilter['to']}
-      _compute_range_facet(facet['widgetType'], stat_facet, props, stat_facet['min'], stat_facet['max'])
+      _compute_range_facet(facet['widgetType'], stat_facet, props, stat_facet['min'], stat_facet['max'], SLOTS = properties['slot'])
       gap = props['gap']
       unit = re.split('\d+', gap)[1]
       return {
@@ -1074,6 +1085,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+3', 'unit': 'SECONDS'}, # ~100 slots
         'bar-widget': {'coeff': '+3', 'unit': 'SECONDS'}, # ~100 slots
         'facet-widget': {'coeff': '+1', 'unit': 'MINUTES'}, # ~10 slots
+        'pie-widget': {'coeff': '+1', 'unit': 'MINUTES'} # ~10 slots
     },
     '30MINUTES': {
         'histogram-widget': {'coeff': '+20', 'unit': 'SECONDS'},
@@ -1081,6 +1093,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+20', 'unit': 'SECONDS'},
         'bar-widget': {'coeff': '+20', 'unit': 'SECONDS'},
         'facet-widget': {'coeff': '+5', 'unit': 'MINUTES'},
+        'pie-widget': {'coeff': '+5', 'unit': 'MINUTES'},
     },
     '1HOURS': {
         'histogram-widget': {'coeff': '+30', 'unit': 'SECONDS'},
@@ -1088,6 +1101,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+30', 'unit': 'SECONDS'},
         'bar-widget': {'coeff': '+30', 'unit': 'SECONDS'},
         'facet-widget': {'coeff': '+10', 'unit': 'MINUTES'},
+        'pie-widget': {'coeff': '+10', 'unit': 'MINUTES'}
     },
     '12HOURS': {
         'histogram-widget': {'coeff': '+7', 'unit': 'MINUTES'},
@@ -1095,6 +1109,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+7', 'unit': 'MINUTES'},
         'bar-widget': {'coeff': '+7', 'unit': 'MINUTES'},
         'facet-widget': {'coeff': '+1', 'unit': 'HOURS'},
+        'pie-widget': {'coeff': '+1', 'unit': 'HOURS'}
     },
     '1DAYS': {
         'histogram-widget': {'coeff': '+15', 'unit': 'MINUTES'},
@@ -1102,6 +1117,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+15', 'unit': 'MINUTES'},
         'bar-widget': {'coeff': '+15', 'unit': 'MINUTES'},
         'facet-widget': {'coeff': '+3', 'unit': 'HOURS'},
+        'pie-widget': {'coeff': '+3', 'unit': 'HOURS'}
     },
     '2DAYS': {
         'histogram-widget': {'coeff': '+30', 'unit': 'MINUTES'},
@@ -1109,6 +1125,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+30', 'unit': 'MINUTES'},
         'bar-widget': {'coeff': '+30', 'unit': 'MINUTES'},
         'facet-widget': {'coeff': '+6', 'unit': 'HOURS'},
+        'pie-widget': {'coeff': '+6', 'unit': 'HOURS'}
     },
     '7DAYS': {
         'histogram-widget': {'coeff': '+3', 'unit': 'HOURS'},
@@ -1116,6 +1133,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+3', 'unit': 'HOURS'},
         'bar-widget': {'coeff': '+3', 'unit': 'HOURS'},
         'facet-widget': {'coeff': '+1', 'unit': 'DAYS'},
+        'pie-widget': {'coeff': '+1', 'unit': 'DAYS'}
     },
     '1MONTHS': {
         'histogram-widget': {'coeff': '+12', 'unit': 'HOURS'},
@@ -1123,6 +1141,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+12', 'unit': 'HOURS'},
         'bar-widget': {'coeff': '+12', 'unit': 'HOURS'},
         'facet-widget': {'coeff': '+5', 'unit': 'DAYS'},
+        'pie-widget': {'coeff': '+5', 'unit': 'DAYS'}
     },
     '3MONTHS': {
         'histogram-widget': {'coeff': '+1', 'unit': 'DAYS'},
@@ -1130,6 +1149,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+1', 'unit': 'DAYS'},
         'bar-widget': {'coeff': '+1', 'unit': 'DAYS'},
         'facet-widget': {'coeff': '+30', 'unit': 'DAYS'},
+        'pie-widget': {'coeff': '+30', 'unit': 'DAYS'}
     },
     '1YEARS': {
         'histogram-widget': {'coeff': '+3', 'unit': 'DAYS'},
@@ -1137,6 +1157,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+3', 'unit': 'DAYS'},
         'bar-widget': {'coeff': '+3', 'unit': 'DAYS'},
         'facet-widget': {'coeff': '+12', 'unit': 'MONTHS'},
+        'pie-widget': {'coeff': '+12', 'unit': 'MONTHS'}
     },
     '2YEARS': {
         'histogram-widget': {'coeff': '+7', 'unit': 'DAYS'},
@@ -1144,6 +1165,7 @@ GAPS = {
         'bucket-widget': {'coeff': '+7', 'unit': 'DAYS'},
         'bar-widget': {'coeff': '+7', 'unit': 'DAYS'},
         'facet-widget': {'coeff': '+3', 'unit': 'MONTHS'},
+        'pie-widget': {'coeff': '+3', 'unit': 'MONTHS'}
     },
     '10YEARS': {
         'histogram-widget': {'coeff': '+1', 'unit': 'MONTHS'},
@@ -1151,5 +1173,6 @@ GAPS = {
         'bucket-widget': {'coeff': '+1', 'unit': 'MONTHS'},
         'bar-widget': {'coeff': '+1', 'unit': 'MONTHS'},
         'facet-widget': {'coeff': '+1', 'unit': 'YEARS'},
+        'pie-widget': {'coeff': '+1', 'unit': 'YEARS'}
     }
 }
